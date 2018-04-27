@@ -106,7 +106,7 @@ function ucl.saveGroups()
 		table.sort( groupInfo.allow )
 	end
 
-	local data,err = ucl.groups
+	local data = ucl.groups
 	
 	sql.Query( string.format("UPDATE ULIB_New SET data = '%s' WHERE ID = 'Groups';", util.TableToJSON(data)) )
 	
@@ -119,8 +119,13 @@ function ucl.saveUsers()
 		table.sort( userInfo.deny )
 	end
 
-	ULib.fileWrite( ULib.UCL_USERS, ULib.makeKeyValues( ucl.users ) )
+	local data = ucl.users
+	
+	sql.Query( string.format("UPDATE ULIB_New SET data = '%s' WHERE ID = 'Users';", util.TableToJSON(data)) )
+	
+	//ULib.fileWrite( ULib.UCL_USERS, ULib.makeKeyValues( ucl.users ) )
 end
+
 
 local function reloadGroups()
 	-- Try to read from the safest locations first
@@ -142,28 +147,29 @@ local function reloadGroups()
 	
 	if not sqls or sqls == nil then
 		
-		local data,err = ULib.parseKeyValues( ULib.removeCommentHeader( defaultGroupsText, "/" ) )
+		local data,err = ULib.parseKeyValues( ULib.removeCommentHeader( ULib.fileRead( path, noMount ) or "", "/" ) )
 		
 		sql.Query( "CREATE TABLE IF NOT EXISTS ULIB_New( id TEXT(255) NOT NULL PRIMARY KEY, data LONGBLOB)" )
 		
 		sql.Query( string.format("INSERT INTO ULIB_New (id, data) VALUES ('Groups', '%s');", util.TableToJSON(data)) )
 		
 		sqls = sql.Query("SELECT * FROM ULIB_New WHERE id = 'Groups';")
+		table.Empty( accessStrings )
+		table.Empty( accessCategories )
 
 	end
 	
-	if sqls[1] == nil then  // Well rip
+	if sqls[1] == nil or sqls[1]["data"] == nil then  // Well rip
 	
-		ucl.groups, err2 = ULib.parseKeyValues( ULib.removeCommentHeader( defaultGroupsText, "/" ) )
-		saveGroups()
+		ucl.groups, err2 = ULib.parseKeyValues( ULib.removeCommentHeader( defaultGroupsText or "", "/" ) )
+		table.Empty( accessStrings )
+		table.Empty( accessCategories )
 	
 	else
 	
 		ucl.groups = util.JSONToTable(sqls[1]["data"])
 	
 	end
-	
-	
 	
 	if not ucl.groups or not ucl.groups[ ULib.ACCESS_ALL ] then
 		needsBackup = true
@@ -175,9 +181,7 @@ local function reloadGroups()
 			ULib.fileDelete( ULib.UCL_REGISTERED ) -- Since we're regnerating we'll need to remove this
 		end
 		
-		local data,err = ULib.parseKeyValues( ULib.removeCommentHeader( defaultGroupsText, "/" ) )
-		
-		sql.Query( string.format("UPDATE ULIB_New SET data = '%s' WHERE ID = 'Groups';", util.TableToJSON(data)) )
+		sql.Query( string.format("UPDATE ULIB_New SET data = '%s' WHERE ID = 'Groups';", util.TableToJSON(ucl.groups)) )
 		
 		table.Empty( accessStrings )
 		table.Empty( accessCategories )
@@ -233,18 +237,13 @@ local function reloadGroups()
 				end
 			end
 		end
+		
 	end
 
-	if needsBackup then
-		Msg( "Groups file was not formatted correctly. Attempting to fix and backing up original\n" )
-		if err then
-			Msg( "Error while reading groups file was: " .. err .. "\n" )
-		end
-		Msg( "Original file was backed up to " .. ULib.backupFile( ULib.UCL_GROUPS ) .. "\n" )
-		ucl.saveGroups()
-	end
 end
 reloadGroups()
+
+
 
 local function reloadUsers()
 	-- Try to read from the safest locations first
@@ -256,8 +255,35 @@ local function reloadUsers()
 
 	local needsBackup = false
 	local err
-	ucl.users, err = ULib.parseKeyValues( ULib.removeCommentHeader( ULib.fileRead( path, true ) or "", "/" ) )
 
+	local sqls = sql.Query("SELECT * FROM ULIB_New WHERE id = 'Users';")
+	
+	if not sqls or sqls == nil then
+		
+		ucl.users, err = ULib.parseKeyValues( ULib.removeCommentHeader( ULib.fileRead( path, true ) or "", "/" ) )
+		
+		sql.Query( "CREATE TABLE IF NOT EXISTS ULIB_New( id TEXT(255) NOT NULL PRIMARY KEY, data LONGBLOB)" )
+
+		sql.Query( string.format("INSERT INTO ULIB_New (id, data) VALUES ('Users', '%s');",  util.TableToJSON(ucl.users)) )
+		
+		sqls = {[1] = {["data"] = util.TableToJSON(ucl.users)}}
+		table.Empty( accessStrings )
+		table.Empty( accessCategories )
+
+	end
+	
+	if sqls[1] == nil then  // Well rip
+	
+		ucl.users, err2 = ULib.parseKeyValues( ULib.removeCommentHeader( "", "/" ) )
+		table.Empty( accessStrings )
+		table.Empty( accessCategories )
+	
+	else
+	
+		ucl.users = util.JSONToTable(sqls[1]["data"])
+	
+	end
+	
 	-- Check to make sure it passes a basic validity test
 	if not ucl.users then
 		needsBackup = true
@@ -1146,7 +1172,7 @@ hook.Remove( "PlayerInitialSpawn", "PlayerAuthSpawn" ) -- Remove from original s
 
 local function newPlayerAuth( ply, ... )
 	ucl.authed[ ply:UniqueID() ] = nil -- If the player ent is removed before disconnecting, we can have this hanging out there.
-	playerAuth( ply, ... ) -- Put here, slightly ahead of ucl.
+	if isfunction(playerAuth) then playerAuth( ply, ... ) end -- Put here, slightly ahead of ucl.
 	ucl.probe( ply, ... )
 end
 hook.Add( "PlayerAuthed", "ULibAuth", newPlayerAuth, HOOK_MONITOR_HIGH )
