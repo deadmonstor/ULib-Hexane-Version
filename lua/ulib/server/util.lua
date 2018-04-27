@@ -201,10 +201,10 @@ function ULib.replicatedWritableCvar( sv_cvar, cl_cvar, default_value, save, not
 	-- umsg.End()
 	
 	net.Start("ulib_repWriteCvar") 
-		net.WriteString( sv_cvar )
-		net.WriteString( cl_cvar )
-		net.WriteString( default )
-		net.WriteString( cvar_obj:GetString() )
+		net.WriteString( sv_cvar or "" )
+		net.WriteString( cl_cvar or "" )
+		net.WriteString( default or "" )
+		net.WriteString( cvar_obj:GetString() or "" )
 	net.Broadcast()
 
 	repcvars[ sv_cvar ] = { access=access, default=default_value, cl_cvar=cl_cvar, cvar_obj=cvar_obj }
@@ -225,10 +225,10 @@ local function repCvarOnJoin( ply )
 		-- umsg.End()
 		
 		net.Start("ulib_repWriteCvar") 
-			net.WriteString( sv_cvar )
-			net.WriteString( v.cl_cvar )
-			net.WriteString( v.default )
-			net.WriteString( v.cvar_obj:GetString() )
+			net.WriteString( sv_cvar or "" )
+			net.WriteString( v.cl_cvar or "")
+			net.WriteString( v.default or "" )
+			net.WriteString( v.cvar_obj:GetString() or "" )
 		net.Send(ply)
 		
 	end
@@ -252,12 +252,21 @@ local function clientChangeCvar( ply, command, argv )
 	local access = repcvars[ sv_cvar ].access
 	if not ply:query( access ) then
 		ULib.tsayError( ply, "You do not have access to this cvar (" .. sv_cvar .. "), " .. ply:Nick() .. "." )
-		umsg.Start( "ulib_repChangeCvar", ply )
-			umsg.Entity( ply )
-			umsg.String( repcvars[ sv_cvar ].cl_cvar )
-			umsg.String( oldvalue )
-			umsg.String( oldvalue ) -- No change
-		umsg.End()
+		
+		-- umsg.Start( "ulib_repChangeCvar", ply )
+			-- umsg.Entity( ply )
+			-- umsg.String( repcvars[ sv_cvar ].cl_cvar )
+			-- umsg.String( oldvalue )
+			-- umsg.String( oldvalue ) -- No change
+		-- umsg.End()
+		
+		net.Start("ulib_repChangeCvar") 
+			net.WriteEntity( ply or Entity(0) )
+			net.WriteString( repcvars[ sv_cvar ].cl_cvar or "")
+			net.WriteString( oldvalue or "" )
+			net.WriteString( oldvalue or "" )
+		net.Send(ply)
+		
 		return
 	end
 
