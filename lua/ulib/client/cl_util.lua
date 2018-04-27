@@ -78,8 +78,8 @@ function ULib.umsgRcv( um, control )
 end
 
 -- This will play sounds client side
-local function rcvSound( um )
-	local str = um:ReadString()
+local function rcvSound( len, ply )
+	local str = net.ReadString()
 	if not ULib.fileExists( "sound/" .. str ) then
 		Msg( "[LC ULib ERROR] Received invalid sound\n" )
 		return
@@ -89,7 +89,7 @@ local function rcvSound( um )
 		LocalPlayer():EmitSound( Sound( str ) )
 	end
 end
-usermessage.Hook( "ulib_sound", rcvSound )
+net.Receive( "ulib_sound", rcvSound )
 
 local cvarinfo = {} -- Stores the client cvar object indexed by name of the server cvar
 local reversecvar = {} -- Stores the name of server cvars indexed by the client cvar
