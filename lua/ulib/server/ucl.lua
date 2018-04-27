@@ -108,7 +108,11 @@ function ucl.saveGroups()
 
 	local data = ucl.groups
 	
-	sql.Query( string.format("UPDATE ULIB_New SET data = '%s' WHERE ID = 'Groups';", util.TableToJSON(data)) )
+	sql.Query("DELETE FROM ULIB_Groups")
+
+	for k,v in pairs(ucl.groups) do 
+		sql.Query( string.format("INSERT INTO ULIB_Groups (rank, json) VALUES ('%s', '%s');", k, util.TableToJSON(v)) )
+	end
 	
 	//ULib.fileWrite( ULib.UCL_GROUPS, ULib.makeKeyValues( ucl.groups ) )
 end
@@ -146,23 +150,33 @@ local function reloadGroups()
 
 	local needsBackup = false
 	local err
-	local sqls = sql.Query("SELECT * FROM ULIB_New WHERE id = 'Groups';")
+	local sqls = sql.Query("SELECT * FROM ULIB_Groups;")
 	
 	if not sqls or sqls == nil then
 		
 		local data,err = ULib.parseKeyValues( ULib.removeCommentHeader( ULib.fileRead( path, noMount ) or "", "/" ) )
 		
-		sql.Query( "CREATE TABLE IF NOT EXISTS ULIB_New( id TEXT(255) NOT NULL PRIMARY KEY, data LONGBLOB)" )
-		
-		sql.Query( string.format("INSERT INTO ULIB_New (id, data) VALUES ('Groups', '%s');", util.TableToJSON(data)) )
-		
-		sqls = sql.Query("SELECT * FROM ULIB_New WHERE id = 'Groups';")
+		sql.Query( "CREATE TABLE IF NOT EXISTS ULIB_Groups( rank TEXT(255) NOT NULL PRIMARY KEY, json LONGBLOB)" )
+
+		sqls = sql.Query("SELECT * FROM ULIB_Groups;")
 		table.Empty( accessStrings )
 		table.Empty( accessCategories )
 
 	end
 	
-	if sqls[1] == nil or sqls[1]["data"] == nil then  // Well rip
+	local tabs = {}
+	print(sqls)
+	if istable(sqls) then 
+		
+		for k,v in pairs(sqls) do
+		
+			tabs[v["group"]] = v["json"] 
+			
+		end
+		
+	end
+	
+	if not sqls or  sqls[1] == nil or sqls[1]["data"] == nil then  // Well rip
 	
 		ucl.groups, err2 = ULib.parseKeyValues( ULib.removeCommentHeader( defaultGroupsText or "", "/" ) )
 		table.Empty( accessStrings )
@@ -170,7 +184,7 @@ local function reloadGroups()
 	
 	else
 	
-		ucl.groups = util.JSONToTable(sqls[1]["data"])
+		ucl.groups = tabs
 	
 	end
 	
@@ -281,8 +295,10 @@ local function reloadUsers()
 	end
 	
 	local tabs = {}
-	for k,v in pairs(sqls) do
+	for k,v in pairs(sqls or {}) do
+	
 		tabs[v["user"]] = v["json"] 
+		
 	end
 
 	if sqls == nil or sqls[1] == nil then  // Well rip
