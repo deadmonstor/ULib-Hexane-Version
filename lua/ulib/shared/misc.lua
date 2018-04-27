@@ -26,6 +26,10 @@
 function ULib.explode( separator, str, limit )
 	local t = {}
 	local curpos = 1
+	
+	separator = separator or ""
+	str = str or ""
+	
 	while true do -- We have a break in the loop
 		local newpos, endpos = str:find( separator, curpos ) -- find the next separator in the string
 		if newpos ~= nil then -- if found then..

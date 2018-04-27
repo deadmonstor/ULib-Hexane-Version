@@ -106,7 +106,11 @@ function ucl.saveGroups()
 		table.sort( groupInfo.allow )
 	end
 
-	ULib.fileWrite( ULib.UCL_GROUPS, ULib.makeKeyValues( ucl.groups ) )
+	local data,err = ucl.groups
+	
+	sql.Query( string.format("UPDATE ULIB_New SET data = '%s' WHERE ID = 'Groups';", util.TableToJSON(data)) )
+	
+	//ULib.fileWrite( ULib.UCL_GROUPS, ULib.makeKeyValues( ucl.groups ) )
 end
 
 function ucl.saveUsers()
@@ -134,8 +138,33 @@ local function reloadGroups()
 
 	local needsBackup = false
 	local err
-	ucl.groups, err = ULib.parseKeyValues( ULib.removeCommentHeader( ULib.fileRead( path, noMount ) or "", "/" ) )
+	local sqls = sql.Query("SELECT * FROM ULIB_New WHERE id = 'Groups';")
+	
+	if not sqls or sqls == nil then
+		
+		local data,err = ULib.parseKeyValues( ULib.removeCommentHeader( defaultGroupsText, "/" ) )
+		
+		sql.Query( "CREATE TABLE IF NOT EXISTS ULIB_New( id TEXT(255) NOT NULL PRIMARY KEY, data LONGBLOB)" )
+		
+		sql.Query( string.format("INSERT INTO ULIB_New (id, data) VALUES ('Groups', '%s');", util.TableToJSON(data)) )
+		
+		sqls = sql.Query("SELECT * FROM ULIB_New WHERE id = 'Groups';")
 
+	end
+	
+	if sqls[1] == nil then  // Well rip
+	
+		ucl.groups, err2 = ULib.parseKeyValues( ULib.removeCommentHeader( defaultGroupsText, "/" ) )
+		saveGroups()
+	
+	else
+	
+		ucl.groups = util.JSONToTable(sqls[1]["data"])
+	
+	end
+	
+	
+	
 	if not ucl.groups or not ucl.groups[ ULib.ACCESS_ALL ] then
 		needsBackup = true
 		-- Totally messed up! Clear it.
@@ -145,6 +174,11 @@ local function reloadGroups()
 		if ULib.fileExists( ULib.UCL_REGISTERED ) then
 			ULib.fileDelete( ULib.UCL_REGISTERED ) -- Since we're regnerating we'll need to remove this
 		end
+		
+		local data,err = ULib.parseKeyValues( ULib.removeCommentHeader( defaultGroupsText, "/" ) )
+		
+		sql.Query( string.format("UPDATE ULIB_New SET data = '%s' WHERE ID = 'Groups';", util.TableToJSON(data)) )
+		
 		table.Empty( accessStrings )
 		table.Empty( accessCategories )
 
