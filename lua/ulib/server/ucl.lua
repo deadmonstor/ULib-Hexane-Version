@@ -121,11 +121,14 @@ function ucl.saveUsers()
 
 	local data = ucl.users
 	
-	sql.Query( string.format("UPDATE ULIB_New SET data = '%s' WHERE ID = 'Users';", util.TableToJSON(data)) )
+	sql.Query("DELETE FROM ULIB_Users")
+
+	for k,v in pairs(ucl.users) do 
+		sql.Query( string.format("INSERT INTO ULIB_Users (user, json) VALUES ('%s', '%s');", k, util.TableToJSON(v)) )
+	end
 	
 	//ULib.fileWrite( ULib.UCL_USERS, ULib.makeKeyValues( ucl.users ) )
 end
-
 
 local function reloadGroups()
 	-- Try to read from the safest locations first
@@ -256,23 +259,33 @@ local function reloadUsers()
 	local needsBackup = false
 	local err
 
-	local sqls = sql.Query("SELECT * FROM ULIB_New WHERE id = 'Users';")
+	local sqls = sql.Query("SELECT * FROM ULIB_Users;")
 	
 	if not sqls or sqls == nil then
 		
 		ucl.users, err = ULib.parseKeyValues( ULib.removeCommentHeader( ULib.fileRead( path, true ) or "", "/" ) )
 		
-		sql.Query( "CREATE TABLE IF NOT EXISTS ULIB_New( id TEXT(255) NOT NULL PRIMARY KEY, data LONGBLOB)" )
-
-		sql.Query( string.format("INSERT INTO ULIB_New (id, data) VALUES ('Users', '%s');",  util.TableToJSON(ucl.users)) )
+		sql.Query( "CREATE TABLE IF NOT EXISTS ULIB_Users( user TEXT(255) NOT NULL PRIMARY KEY, json LONGBLOB)" )
 		
-		sqls = {[1] = {["data"] = util.TableToJSON(ucl.users)}}
+		for k,v in pairs(ucl.users) do 
+		
+			sql.Query( string.format("INSERT INTO ULIB_Users (user, data) VALUES ('%s', '%s');", k, util.TableToJSON(v) ))
+		
+		end
+
+		sqls = sql.Query("SELECT * FROM ULIB_Users;")
 		table.Empty( accessStrings )
 		table.Empty( accessCategories )
+		
 
 	end
 	
-	if sqls[1] == nil then  // Well rip
+	local tabs = {}
+	for k,v in pairs(sqls) do
+		tabs[v["user"]] = v["json"] 
+	end
+
+	if sqls == nil or sqls[1] == nil then  // Well rip
 	
 		ucl.users, err2 = ULib.parseKeyValues( ULib.removeCommentHeader( "", "/" ) )
 		table.Empty( accessStrings )
@@ -280,10 +293,10 @@ local function reloadUsers()
 	
 	else
 	
-		ucl.users = util.JSONToTable(sqls[1]["data"])
-	
+		ucl.users = tabs
+		
 	end
-	
+
 	-- Check to make sure it passes a basic validity test
 	if not ucl.users then
 		needsBackup = true
@@ -293,27 +306,28 @@ local function reloadUsers()
 	else
 		for id, userInfo in pairs( ucl.users ) do
 			if type( id ) ~= "string" then
-				needsBackup = true
-				ucl.users[ id ] = nil
+				ucl.users[ tostring(id) ] = nil
 			else
 
 				if type( userInfo ) ~= "table" then
-					needsBackup = true
-					userInfo = {}
-					ucl.users[ id ] = userInfo
+					userInfo = string.ToTable((userInfo) ) or {}
+					ucl.users[ tostring(id) ] = userInfo
 				end
 
+				if userInfo.allow == nil then userInfo.allow = {} end
+				
 				if type( userInfo.allow ) ~= "table" then
-					needsBackup = true
-					userInfo.allow = {}
+					userInfo.allow = string.ToTable(userInfo.allow) or {}
 				end
 
+				if userInfo.deny == nil then userInfo.deny = {} end
+				
 				if type( userInfo.deny ) ~= "table" then
-					needsBackup = true
-					userInfo.deny = {}
+					userInfo.deny = string.ToTable((userInfo.deny) ) or {}
 				end
 
 				if userInfo.group and type( userInfo.group ) ~= "string" then
+
 					needsBackup = true
 					userInfo.group = nil
 				end
@@ -345,6 +359,8 @@ local function reloadUsers()
 				end
 			end
 		end
+		
+		ucl.saveUsers()
 	end
 
 	if needsBackup then
