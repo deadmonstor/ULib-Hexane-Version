@@ -263,13 +263,19 @@ repCvarServerChanged = function( sv_cvar, oldvalue, newvalue )
 		return
 	end
 
-	umsg.Start( "ulib_repChangeCvar" ) -- Tell clients to reset to new value
-		umsg.Entity( repcvars[ sv_cvar ].ignore or Entity( 0 ) )
-		umsg.String( repcvars[ sv_cvar ].cl_cvar )
-		umsg.String( oldvalue )
-		umsg.String( newvalue )
-	umsg.End()
+	-- umsg.Start( "ulib_repChangeCvar" ) -- Tell clients to reset to new value
+		-- umsg.Entity( repcvars[ sv_cvar ].ignore or Entity( 0 ) )
+		-- umsg.String( repcvars[ sv_cvar ].cl_cvar )
+		-- umsg.String( oldvalue )
+		-- umsg.String( newvalue )
+	-- umsg.End()
 	
+	net.Start("ulib_repChangeCvar")
+		net.WriteEntity( repcvars[ sv_cvar ].ignore or Entity( 0 ))
+		net.WriteString( repcvars[ sv_cvar ].cl_cvar )
+		net.WriteString( oldvalue )
+		net.WriteString( newvalue )
+	net.Broadcast()
 
 	if repcvars[ sv_cvar ].ignore then
 		repcvars[ sv_cvar ].ignore = nil

@@ -130,11 +130,11 @@ end
 usermessage.Hook( "ulib_repWriteCvar", readCvar )
 
 -- This is called when they've attempted to change a cvar they don't have access to.
-local function changeCvar( um )
-	local ply = um:ReadEntity()
-	local cl_cvar = um:ReadString()
-	local oldvalue = um:ReadString()
-	local newvalue = um:ReadString()
+local function changeCvar( len, ply )
+	local ply = net.ReadEntity()
+	local cl_cvar = net.ReadString()
+	local oldvalue = net.ReadString()
+	local newvalue = net.ReadString()
 	local changed = oldvalue ~= newvalue
 
 	if not reversecvar[ cl_cvar ] then -- Error!
@@ -154,4 +154,4 @@ local function changeCvar( um )
 		end
 	end )
 end
-usermessage.Hook( "ulib_repChangeCvar", changeCvar )
+net.Receive( "ulib_repChangeCvar", changeCvar )
