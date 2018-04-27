@@ -108,11 +108,11 @@ local function clCvarChanged( cl_cvar, oldvalue, newvalue )
 end
 
 -- This is the counterpart to <replicatedWithWritableCvar>. See that function for more info. We also add callbacks from here.
-local function readCvar( um )
-	local sv_cvar = um:ReadString()
-	local cl_cvar = um:ReadString()
-	local default_value = um:ReadString()
-	local current_value = um:ReadString()
+local function readCvar( len, ply )
+	local sv_cvar = net.ReadString()
+	local cl_cvar = net.ReadString()
+	local default_value = net.ReadString()
+	local current_value = net.ReadString()
 
 	cvarinfo[ sv_cvar ] = GetConVar( cl_cvar ) or CreateClientConVar( cl_cvar, default_value, false, false ) -- Make sure it's created one way or another (second case is most common)
 	reversecvar[ cl_cvar ] = { sv_cvar=sv_cvar }
@@ -127,7 +127,7 @@ local function readCvar( um )
 
 	cvars.AddChangeCallback( cl_cvar, clCvarChanged )
 end
-usermessage.Hook( "ulib_repWriteCvar", readCvar )
+net.Receive( "ulib_repWriteCvar", readCvar )
 
 -- This is called when they've attempted to change a cvar they don't have access to.
 local function changeCvar( len, ply )

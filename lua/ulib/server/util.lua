@@ -193,12 +193,19 @@ function ULib.replicatedWritableCvar( sv_cvar, cl_cvar, default_value, save, not
 
 	local cvar_obj = GetConVar( sv_cvar ) or CreateConVar( sv_cvar, default_value, flags )
 
-	umsg.Start( "ulib_repWriteCvar" ) -- Send to everyone connected
-		umsg.String( sv_cvar )
-		umsg.String( cl_cvar )
-		umsg.String( default_value )
-		umsg.String( cvar_obj:GetString() )
-	umsg.End()
+	-- umsg.Start( "ulib_repWriteCvar" ) -- Send to everyone connected
+		-- umsg.String( sv_cvar )
+		-- umsg.String( cl_cvar )
+		-- umsg.String( default_value )
+		-- umsg.String( cvar_obj:GetString() )
+	-- umsg.End()
+	
+	net.Start("ulib_repWriteCvar") 
+		net.WriteString( sv_cvar )
+		net.WriteString( cl_cvar )
+		net.WriteString( default )
+		net.WriteString( cvar_obj:GetString() )
+	net.Broadcast()
 
 	repcvars[ sv_cvar ] = { access=access, default=default_value, cl_cvar=cl_cvar, cvar_obj=cvar_obj }
 	cvars.AddChangeCallback( sv_cvar, repCvarServerChanged )
@@ -210,12 +217,20 @@ end
 
 local function repCvarOnJoin( ply )
 	for sv_cvar, v in pairs( repcvars ) do
-		umsg.Start( "ulib_repWriteCvar", ply )
-			umsg.String( sv_cvar )
-			umsg.String( v.cl_cvar )
-			umsg.String( v.default )
-			umsg.String( v.cvar_obj:GetString() )
-		umsg.End()
+		-- umsg.Start( "ulib_repWriteCvar", ply )
+			-- umsg.String( sv_cvar )
+			-- umsg.String( v.cl_cvar )
+			-- umsg.String( v.default )
+			-- umsg.String( v.cvar_obj:GetString() )
+		-- umsg.End()
+		
+		net.Start("ulib_repWriteCvar") 
+			net.WriteString( sv_cvar )
+			net.WriteString( v.cl_cvar )
+			net.WriteString( v.default )
+			net.WriteString( v.cvar_obj:GetString() )
+		net.Send(ply)
+		
 	end
 end
 hook.Add( ULib.HOOK_LOCALPLAYERREADY, "ULibSendCvars", repCvarOnJoin )
@@ -256,6 +271,7 @@ concommand.Add( "ulib_update_cvar", clientChangeCvar, nil, nil, FCVAR_SERVER_CAN
 
 if SERVER then
 	util.AddNetworkString("ulib_repChangeCvar")
+	util.AddNetworkString("ulib_repWriteCvar")
 end
 
 repCvarServerChanged = function( sv_cvar, oldvalue, newvalue )
