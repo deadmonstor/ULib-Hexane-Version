@@ -165,12 +165,17 @@ local function reloadGroups()
 	end
 	
 	local tabs = {}
-	print(sqls)
+
 	if istable(sqls) then 
 		
 		for k,v in pairs(sqls) do
-		
-			tabs[v["group"]] = v["json"] 
+			local c = v["json"]
+			local b = v["rank"]
+			
+			if c == nil then c = {} end
+			if b == nil then b = "" end
+			
+			tabs[b] = c
 			
 		end
 		

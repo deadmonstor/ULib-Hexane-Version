@@ -5,8 +5,8 @@
 ]]
 
 local function ULibRPC()
-	local fn_string = net.ReadString()
-	local args = net.ReadTable()
+	local fn_string = net.ReadString() or ""
+	local args = net.ReadTable() or {}
 	local success, fn = ULib.findVar( fn_string )
 	if not success or type( fn ) ~= "function" then return error( "Received bad RPC, invalid function (" .. tostring( fn_string ) .. ")!" ) end
 
