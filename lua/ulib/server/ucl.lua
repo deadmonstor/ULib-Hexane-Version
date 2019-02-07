@@ -45,7 +45,6 @@
 ]]
 
 local ucl = ULib.ucl -- Make it easier for us to refer to
-
 local defaultGroupsText = -- To populate initially or when the user deletes it
 [["operator"
 {
@@ -192,7 +191,7 @@ local function reloadGroups()
 		ucl.groups = tabs
 	
 	end
-	
+
 	if not ucl.groups or not ucl.groups[ ULib.ACCESS_ALL ] then
 		needsBackup = true
 		-- Totally messed up! Clear it.
@@ -303,7 +302,7 @@ local function reloadUsers()
 	for k,v in pairs(sqls or {}) do
 	
 		tabs[v["user"]] = v["json"] 
-		
+
 	end
 
 	if sqls == nil or sqls[1] == nil then  // Well rip
@@ -329,9 +328,8 @@ local function reloadUsers()
 			if type( id ) ~= "string" then
 				ucl.users[ tostring(id) ] = nil
 			else
-
 				if type( userInfo ) ~= "table" then
-					userInfo = string.ToTable((userInfo) ) or {}
+					userInfo = util.JSONToTable(userInfo) or {}
 					ucl.users[ tostring(id) ] = userInfo
 				end
 
@@ -380,7 +378,7 @@ local function reloadUsers()
 				end
 			end
 		end
-		
+
 		ucl.saveUsers()
 	end
 
